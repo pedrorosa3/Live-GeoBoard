@@ -9,10 +9,11 @@ export class SocketService {
   private socket: Socket;
 
   constructor() {
+    // Liga-se ao teu servidor Node.js na porta 3000
     this.socket = io('http://localhost:3000');
   }
 
-  // Escutar novos pontos vindos do Node
+  // Escuta os pontos que vêm da Base de Dados/Servidor
   onNewPoint(): Observable<any> {
     return new Observable((observer) => {
       this.socket.on('point_added', (point) => {
@@ -21,8 +22,8 @@ export class SocketService {
     });
   }
 
-  // Enviar um ponto para o Node
-  sendPoint(point: any) {
+  // Envia um novo ponto criado pelo utilizador para o Servidor
+  sendPoint(point: { lat: number, lng: number, title: string, category: string }) {
     this.socket.emit('new_point', point);
   }
 }
