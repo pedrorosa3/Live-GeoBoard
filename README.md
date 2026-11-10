@@ -33,6 +33,50 @@ O **Live GeoBoard** permite que múltiplos utilizadores acedam simultaneamente a
 2. **Escrita (Real-time):** Quando o utilizador clica no mapa para adicionar um ponto, o Angular emite um evento via WebSocket.
 3. **Persistência e Propagação:** O Node.js valida os dados com o Mongoose, guarda no MongoDB Atlas e faz *broadcast* imediato do novo ponto para todos os outros clientes conectados.
 
+## 📋 Pré-requisitos
+
+Garante que tens as seguintes ferramentas instaladas:
+* [Git](https://git-scm.com)
+* [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/)
+* Uma conta no [MongoDB Atlas](https://www.mongodb.com/atlas/database) (ou o MongoDB a correr localmente)
+* *Opcional: [Node.js](https://nodejs.org/) se quiseres correr os servidores manualmente sem Docker.*
+
+## ⚙️ Configuração do Ambiente
+
+Para que o backend consiga comunicar com a base de dados, precisas de configurar as tuas credenciais de acesso locais.
+
+1. Navega até à pasta `server`.
+2. Cria um ficheiro chamado `.env`.
+3. Adiciona a tua *Connection String* do MongoDB com o seguinte formato:
+
+```env
+MONGO_URI=mongodb+srv://<TEU_USER>:<TUA_PASSWORD>@cluster0.abcde.mongodb.net/geoboard?retryWrites=true&w=majority
+```
+
+## 🐳 Como Executar com o Docker (Recomendado)
+
+O projeto está otimizado com um *multi-stage build* que compila o Angular e o serve de forma super leve num contentor Nginx, enquanto orquestra o backend em simultâneo.
+
+1. Abre o teu terminal na **raiz do projeto** (onde está o ficheiro `docker-compose.yml`).
+2. Constrói e levanta os contentores em segundo plano:
+
+```bash
+docker-compose up --build -d
+```
+Acede à aplicação no teu navegador em: http://localhost:4200
+
+Para veres os logs (registos) do servidor em tempo real:
+
+```bash
+docker-compose logs -f backend
+```
+
+Para parares a aplicação e desligares os contentores:
+
+```bash
+docker-compose down
+```
+
 ## 🚀 Como Executar Localmente
 
 ### Pré-requisitos
@@ -76,6 +120,11 @@ A aplicação abrirá automaticamente no navegador em `http://localhost:4200`.
 ![Screenshot do Live GeoBoard](img/demo.png)
 
 Um mural interativo onde os utilizadores podem registar pontos de interesse num mapa
+
+
+## 🚀 Próximos Passos (Roadmap) ##
+
+Login com utilizadores, autenticação, agrupamento de marcadores no mapa
 
 
 ## 👨‍💻 Autor
