@@ -4,7 +4,7 @@
 
 **Mapa colaborativo em tempo real para marcar pontos geográficos**
 
-Cada ponto adicionado por um utilizador aparece de imediato no ecrã de todos os outros.
+Cada ponto adicionado, editado ou removido aparece de imediato no ecrã de todos os outros utilizadores.
 
 ![Angular](https://img.shields.io/badge/Angular-22-DD0031?style=flat-square&logo=angular&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-22+-339933?style=flat-square&logo=nodedotjs&logoColor=white)
@@ -30,9 +30,10 @@ Cada ponto adicionado por um utilizador aparece de imediato no ecrã de todos os
 - [Arquitetura](#️-arquitetura)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [Como Executar](#-como-executar)
-  - [Configuração do `.env`](#1-configurar-a-base-de-dados)
+  - [Configuração do `.env`](#1-configurar-o-ficheiro-env)
   - [Com Docker (recomendado)](#2a-executar-com-docker-recomendado)
   - [Sem Docker (manual)](#2b-executar-manualmente-sem-docker)
+- [Como Usar](#-como-usar)
 - [Roadmap](#-roadmap)
 - [Autor](#-autor)
 
@@ -44,11 +45,16 @@ O **Live GeoBoard** é uma aplicação web em tempo real construída com a stack
 
 Vários utilizadores podem abrir o mesmo mapa interativo em simultâneo. Quando alguém clica no mapa para registar um ponto de interesse, esse ponto é guardado na cloud e enviado no mesmo instante para todos os clientes ligados, mantendo o mapa sincronizado para toda a gente.
 
+Qualquer pessoa pode ver o mapa, mas para criar pontos é preciso uma conta. Cada ponto fica associado a quem o criou, e só essa pessoa o pode **editar** (nome e cor) ou **remover**.
+
 ## ✨ Funcionalidades
 
 | | Funcionalidade | Descrição |
 |---|---|---|
-| ⚡ | **Tempo real** | Comunicação bidirecional via `Socket.io` |
+| ⚡ | **Tempo real** | Criação, edição e remoção de pontos propagadas via `Socket.io` |
+| 🔐 | **Contas de utilizador** | Registo e login com passwords cifradas (bcrypt) e sessões JWT |
+| 🛡️ | **Permissões por ponto** | Só o autor de um ponto o pode editar ou remover; o servidor valida cada pedido |
+| 🎨 | **Pontos com cor** | Cada ponto tem um nome e uma cor, editáveis pelo autor |
 | ☁️ | **Persistência na cloud** | Coordenadas e metadados guardados no MongoDB Atlas |
 | 📜 | **Histórico ao arrancar** | Os pontos existentes são carregados por REST API (`fetch`) |
 | 🧩 | **Angular moderno** | Standalone Components e injeção de dependências |
@@ -60,7 +66,7 @@ Vários utilizadores podem abrir o mesmo mapa interativo em simultâneo. Quando 
 | Camada | Tecnologias |
 |---|---|
 | **Frontend** | [Angular](https://angular.dev/) · TypeScript · RxJS · [Leaflet](https://leafletjs.com/) · [Socket.io-client](https://socket.io/) |
-| **Backend** | [Node.js](https://nodejs.org/) · [Express](https://expressjs.com/) · [Socket.io](https://socket.io/) · [Mongoose](https://mongoosejs.com/) |
+| **Backend** | [Node.js](https://nodejs.org/) · [Express](https://expressjs.com/) · [Socket.io](https://socket.io/) · [Mongoose](https://mongoosejs.com/) · [bcryptjs](https://github.com/dcodeIO/bcrypt.js) · [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) |
 | **Base de Dados** | [MongoDB Atlas](https://www.mongodb.com/atlas) |
 | **Infraestrutura** | [Docker](https://www.docker.com/) · Docker Compose · Nginx |
 
@@ -73,20 +79,36 @@ sequenceDiagram
     participant DB as 🍃 MongoDB Atlas
     participant B as 🧑 Cliente B (Angular)
 
+    A->>S: POST /api/auth/login (REST)
+    S-->>A: Token JWT
+
     A->>S: GET /api/points (REST)
     S->>DB: Consultar pontos
     DB-->>S: Lista de pontos
     S-->>A: Pontos guardados
 
-    A->>S: emit new_point (WebSocket)
-    S->>DB: Validar (Mongoose) e guardar
-    S-->>A: point_added (broadcast)
-    S-->>B: point_added (broadcast)
+    A->>S: Ligação WebSocket com o token
+    A->>S: new_point / update_point / delete_point
+    S->>S: Validar token e dono do ponto
+    S->>DB: Guardar alteração (Mongoose)
+    S-->>A: point_added / point_updated / point_removed
+    S-->>B: point_added / point_updated / point_removed
 ```
 
-1. **Leitura:** ao abrir a aplicação, o Angular faz um pedido HTTP ao Node.js, que devolve todos os pontos guardados no MongoDB.
-2. **Escrita:** ao clicar no mapa, o Angular emite um evento por WebSocket com as coordenadas.
-3. **Propagação:** o Node.js valida os dados com o Mongoose, guarda-os no MongoDB Atlas e faz *broadcast* do novo ponto para todos os clientes ligados.
+1. **Autenticação:** o utilizador regista-se ou entra com `POST /api/auth/register` ou `POST /api/auth/login` e recebe um token JWT (válido 7 dias), que o Angular guarda no browser e envia ao ligar o WebSocket.
+2. **Leitura:** ao abrir a aplicação, o Angular faz um pedido HTTP ao Node.js, que devolve todos os pontos guardados no MongoDB.
+3. **Escrita:** ao criar, editar ou remover um ponto, o Angular emite um evento por WebSocket. Sem sessão iniciada, a ligação é só de leitura.
+4. **Permissões:** o Node.js confirma que o token é válido e, para editar ou remover, que o ponto pertence a esse utilizador.
+5. **Propagação:** a alteração é guardada no MongoDB Atlas e enviada (*broadcast*) para todos os clientes ligados.
+
+| Evento (cliente → servidor) | Requer | Evento enviado a todos |
+|---|---|---|
+| `new_point` | Sessão iniciada | `point_added` |
+| `update_point` | Ser o autor do ponto | `point_updated` |
+| `delete_point` | Ser o autor do ponto | `point_removed` |
+
+> [!NOTE]
+> Os pontos criados antes de existirem contas não têm autor, por isso ninguém os pode editar nem remover pela aplicação.
 
 ## 📁 Estrutura do Projeto
 
@@ -95,10 +117,11 @@ Live-GeoBoard/
 ├── angular/
 │   └── live-geoboard/      # Frontend Angular
 │       ├── src/app/
-│       │   └── services/   # Serviço de WebSocket
+│       │   ├── app.ts      # Mapa, login e editor de pontos
+│       │   └── services/   # Autenticação (auth.ts) e WebSocket (socket.ts)
 │       └── Dockerfile      # Build multi-stage (Node → Nginx)
 ├── server/                 # Backend Node.js + Express + Socket.io
-│   ├── index.js
+│   ├── index.js            # API REST, autenticação, modelos e eventos de socket
 │   └── Dockerfile
 ├── img/                    # Imagens do README
 └── docker-compose.yml      # Orquestração dos contentores
@@ -120,13 +143,22 @@ git clone https://github.com/pedrorosa3/Live-GeoBoard.git
 cd Live-GeoBoard
 ```
 
-### 1. Configurar a base de dados
+### 1. Configurar o ficheiro `.env`
 
-Cria um ficheiro `.env` dentro da pasta `server/` com a *connection string* do MongoDB:
+Cria um ficheiro `.env` dentro da pasta `server/` com a *connection string* do MongoDB e uma chave secreta para assinar os tokens de sessão:
 
 ```env
 MONGO_URI=mongodb+srv://<UTILIZADOR>:<PASSWORD>@cluster0.xxxxx.mongodb.net/geoboard?retryWrites=true&w=majority
+JWT_SECRET=uma_frase_longa_e_aleatoria
 ```
+
+Para gerar uma chave aleatória:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+Se faltar o `JWT_SECRET`, o servidor não arranca.
 
 > [!WARNING]
 > O ficheiro `.env` contém credenciais. Nunca o envies para o repositório.
@@ -178,14 +210,25 @@ npx ng serve -o
 
 A aplicação abre automaticamente em http://localhost:4200.
 
+## 🧭 Como Usar
+
+1. **Cria uma conta:** no topo da página, escreve um nome de utilizador (3 a 30 caracteres) e uma password (mínimo 6) e carrega em **Criar conta**. Da próxima vez, usa **Entrar**. A sessão fica guardada no browser durante 7 dias.
+2. **Adiciona um ponto:** clica em qualquer sítio do mapa, dá-lhe um nome, escolhe uma cor e carrega em **Guardar**.
+3. **Edita ou remove:** clica num dos teus pontos para abrir o popup e usa **Editar** ou **Remover**. Nos pontos de outras pessoas só aparece o nome do autor.
+4. **Vê em tempo real:** abre a aplicação noutra janela ou noutro computador. As alterações aparecem nas duas sem recarregar a página.
+
+> [!TIP]
+> Sem sessão iniciada podes ver o mapa e os pontos de toda a gente, mas não podes alterar nada.
+
 ## 🗺️ Roadmap
 
 - [x] Mapa interativo com Leaflet
 - [x] Sincronização em tempo real com WebSockets
 - [x] Persistência no MongoDB Atlas
 - [x] Dockerização do frontend e do backend
-- [ ] Registo e login de utilizadores
-- [ ] Autenticação nas rotas e nos eventos de socket
+- [x] Registo e login de utilizadores
+- [x] Autenticação nos eventos de socket
+- [x] Edição e remoção de pontos pelo autor
 - [ ] Agrupamento de marcadores (*clustering*) no mapa
 
 ## 👨‍💻 Autor
