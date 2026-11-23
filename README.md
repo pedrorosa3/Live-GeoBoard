@@ -1,135 +1,202 @@
+<div align="center">
+
 # 🌍 Live GeoBoard
 
-Uma aplicação web em tempo real (Real-Time Web App) para marcação colaborativa de pontos geográficos, construída com a stack MEAN e WebSockets.
+**Mapa colaborativo em tempo real para marcar pontos geográficos**
 
-O **Live GeoBoard** permite que múltiplos utilizadores acedam simultaneamente a um mapa interativo. Qualquer ponto de interesse adicionado por um utilizador é instantaneamente propagado para todos os clientes ativos, garantindo um estado sincronizado em tempo real, enquanto persiste os dados na cloud de forma segura.
+Cada ponto adicionado por um utilizador aparece de imediato no ecrã de todos os outros.
 
-## ✨ Funcionalidades Principais
+![Angular](https://img.shields.io/badge/Angular-22-DD0031?style=flat-square&logo=angular&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-22+-339933?style=flat-square&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5-000000?style=flat-square&logo=express&logoColor=white)
+![Socket.io](https://img.shields.io/badge/Socket.io-4.8-010101?style=flat-square&logo=socketdotio&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB_Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?style=flat-square&logo=leaflet&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
 
-- **Sincronização em Tempo Real:** Comunicação bidirecional assíncrona utilizando WebSockets (`Socket.io`).
-- **Persistência na Cloud:** Integração com MongoDB Atlas para armazenamento seguro de coordenadas e metadados.
-- **Carregamento Assíncrono:** Consumo de REST API via `fetch` nativo no arranque da aplicação para carregar o histórico geográfico.
-- **Client-Side Rendering Otimizado:** Construído em Angular 19+ (Standalone Components), com injeção de dependências otimizada.
-- **Mapa Interativo:** Integração com a biblioteca de código aberto Leaflet.
+📅 **Novembro de 2026** · 👨‍💻 **Pedro Rosa**
+
+<img src="img/demo.png" alt="Screenshot do Live GeoBoard" width="800">
+
+</div>
+
+---
+
+## 📖 Índice
+
+- [Sobre o Projeto](#-sobre-o-projeto)
+- [Funcionalidades](#-funcionalidades)
+- [Stack Tecnológica](#️-stack-tecnológica)
+- [Arquitetura](#️-arquitetura)
+- [Estrutura do Projeto](#-estrutura-do-projeto)
+- [Como Executar](#-como-executar)
+  - [Configuração do `.env`](#1-configurar-a-base-de-dados)
+  - [Com Docker (recomendado)](#2a-executar-com-docker-recomendado)
+  - [Sem Docker (manual)](#2b-executar-manualmente-sem-docker)
+- [Roadmap](#-roadmap)
+- [Autor](#-autor)
+
+---
+
+## 💡 Sobre o Projeto
+
+O **Live GeoBoard** é uma aplicação web em tempo real construída com a stack **MEAN** (MongoDB, Express, Angular, Node.js) e **WebSockets**.
+
+Vários utilizadores podem abrir o mesmo mapa interativo em simultâneo. Quando alguém clica no mapa para registar um ponto de interesse, esse ponto é guardado na cloud e enviado no mesmo instante para todos os clientes ligados, mantendo o mapa sincronizado para toda a gente.
+
+## ✨ Funcionalidades
+
+| | Funcionalidade | Descrição |
+|---|---|---|
+| ⚡ | **Tempo real** | Comunicação bidirecional via `Socket.io` |
+| ☁️ | **Persistência na cloud** | Coordenadas e metadados guardados no MongoDB Atlas |
+| 📜 | **Histórico ao arrancar** | Os pontos existentes são carregados por REST API (`fetch`) |
+| 🧩 | **Angular moderno** | Standalone Components e injeção de dependências |
+| 🗺️ | **Mapa interativo** | Renderizado com a biblioteca open source Leaflet |
+| 🐳 | **Pronto para Docker** | Frontend e backend orquestrados com Docker Compose |
 
 ## 🛠️ Stack Tecnológica
 
-**Frontend:**
-- [Angular](https://angular.dev/) (TypeScript, RxJS)
-- [Leaflet](https://leafletjs.com/) (Visualização Geoespacial)
-- [Socket.io-client](https://socket.io/)
+| Camada | Tecnologias |
+|---|---|
+| **Frontend** | [Angular](https://angular.dev/) · TypeScript · RxJS · [Leaflet](https://leafletjs.com/) · [Socket.io-client](https://socket.io/) |
+| **Backend** | [Node.js](https://nodejs.org/) · [Express](https://expressjs.com/) · [Socket.io](https://socket.io/) · [Mongoose](https://mongoosejs.com/) |
+| **Base de Dados** | [MongoDB Atlas](https://www.mongodb.com/atlas) |
+| **Infraestrutura** | [Docker](https://www.docker.com/) · Docker Compose · Nginx |
 
-**Backend:**
-- [Node.js](https://nodejs.org/) & [Express](https://expressjs.com/) (Servidor Web & REST API)
-- [Socket.io](https://socket.io/) (Motor WebSockets)
-- [Mongoose](https://mongoosejs.com/) (Modelação de Dados / ODM)
+## 🏗️ Arquitetura
 
-**Base de Dados:**
-- [MongoDB Atlas](https://www.mongodb.com/atlas) (Cloud NoSQL Database)
+```mermaid
+sequenceDiagram
+    participant A as 🧑 Cliente A (Angular)
+    participant S as 🖥️ Servidor (Node.js)
+    participant DB as 🍃 MongoDB Atlas
+    participant B as 🧑 Cliente B (Angular)
 
-## 🏗️ Arquitetura e Fluxo de Dados
+    A->>S: GET /api/points (REST)
+    S->>DB: Consultar pontos
+    DB-->>S: Lista de pontos
+    S-->>A: Pontos guardados
 
-1. **Leitura (Init):** Quando um cliente abre o Angular, é feito um pedido `GET` (via HTTP/REST) ao Node.js. O Node.js consulta o MongoDB e devolve todo o histórico de pontos guardados para renderizar no mapa.
-2. **Escrita (Real-time):** Quando o utilizador clica no mapa para adicionar um ponto, o Angular emite um evento via WebSocket.
-3. **Persistência e Propagação:** O Node.js valida os dados com o Mongoose, guarda no MongoDB Atlas e faz *broadcast* imediato do novo ponto para todos os outros clientes conectados.
-
-## 📋 Pré-requisitos
-
-Garante que tens as seguintes ferramentas instaladas:
-* [Git](https://git-scm.com)
-* [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/)
-* Uma conta no [MongoDB Atlas](https://www.mongodb.com/atlas/database) (ou o MongoDB a correr localmente)
-* *Opcional: [Node.js](https://nodejs.org/) se quiseres correr os servidores manualmente sem Docker.*
-
-## ⚙️ Configuração do Ambiente
-
-Para que o backend consiga comunicar com a base de dados, precisas de configurar as tuas credenciais de acesso locais.
-
-1. Navega até à pasta `server`.
-2. Cria um ficheiro chamado `.env`.
-3. Adiciona a tua *Connection String* do MongoDB com o seguinte formato:
-
-```env
-MONGO_URI=mongodb+srv://<TEU_USER>:<TUA_PASSWORD>@cluster0.abcde.mongodb.net/geoboard?retryWrites=true&w=majority
+    A->>S: emit new_point (WebSocket)
+    S->>DB: Validar (Mongoose) e guardar
+    S-->>A: point_added (broadcast)
+    S-->>B: point_added (broadcast)
 ```
 
-## 🐳 Como Executar com o Docker (Recomendado)
+1. **Leitura:** ao abrir a aplicação, o Angular faz um pedido HTTP ao Node.js, que devolve todos os pontos guardados no MongoDB.
+2. **Escrita:** ao clicar no mapa, o Angular emite um evento por WebSocket com as coordenadas.
+3. **Propagação:** o Node.js valida os dados com o Mongoose, guarda-os no MongoDB Atlas e faz *broadcast* do novo ponto para todos os clientes ligados.
 
-O projeto está otimizado com um *multi-stage build* que compila o Angular e o serve de forma super leve num contentor Nginx, enquanto orquestra o backend em simultâneo.
+## 📁 Estrutura do Projeto
 
-1. Abre o teu terminal na **raiz do projeto** (onde está o ficheiro `docker-compose.yml`).
-2. Constrói e levanta os contentores em segundo plano:
+```
+Live-GeoBoard/
+├── angular/
+│   └── live-geoboard/      # Frontend Angular
+│       ├── src/app/
+│       │   └── services/   # Serviço de WebSocket
+│       └── Dockerfile      # Build multi-stage (Node → Nginx)
+├── server/                 # Backend Node.js + Express + Socket.io
+│   ├── index.js
+│   └── Dockerfile
+├── img/                    # Imagens do README
+└── docker-compose.yml      # Orquestração dos contentores
+```
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+
+- [Git](https://git-scm.com)
+- [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/) *(para a opção com Docker)*
+- [Node.js](https://nodejs.org/) v22.22+ ou v24.15+ *(exigido pelo Angular 22; para a opção manual)*
+- Uma conta no [MongoDB Atlas](https://www.mongodb.com/atlas/database) (o cluster gratuito M0 chega) ou um MongoDB local
+
+Começa por clonar o repositório:
+
+```bash
+git clone https://github.com/pedrorosa3/Live-GeoBoard.git
+cd Live-GeoBoard
+```
+
+### 1. Configurar a base de dados
+
+Cria um ficheiro `.env` dentro da pasta `server/` com a *connection string* do MongoDB:
+
+```env
+MONGO_URI=mongodb+srv://<UTILIZADOR>:<PASSWORD>@cluster0.xxxxx.mongodb.net/geoboard?retryWrites=true&w=majority
+```
+
+> [!WARNING]
+> O ficheiro `.env` contém credenciais. Nunca o envies para o repositório.
+
+### 2a. Executar com Docker (recomendado)
+
+Na **raiz do projeto**, constrói e arranca os contentores:
 
 ```bash
 docker-compose up --build -d
 ```
-Acede à aplicação no teu navegador em: http://localhost:4200
 
-Para veres os logs (registos) do servidor em tempo real:
+| Serviço | Endereço |
+|---|---|
+| 🌐 Frontend (Nginx) | http://localhost:4200 |
+| 🖥️ Backend (API + WebSockets) | http://localhost:3000 |
+
+Comandos úteis:
 
 ```bash
+# Ver os logs do backend em tempo real
 docker-compose logs -f backend
-```
 
-Para parares a aplicação e desligares os contentores:
-
-```bash
+# Parar e remover os contentores
 docker-compose down
 ```
 
-## 🚀 Como Executar Localmente
+### 2b. Executar manualmente (sem Docker)
 
-### Pré-requisitos
-- Node.js (v18+)
-- Conta no MongoDB Atlas (Cluster gratuito / Tier M0)
+São precisos **dois terminais**: um para o backend e outro para o frontend.
 
-### 1. Configurar o Backend (Servidor)
+**Terminal 1 — Backend**
+
 ```bash
-# Entrar na pasta do servidor
 cd server
-
-# Instalar dependências
 npm install
-
-# Criar o ficheiro de variáveis de ambiente
-# Adiciona a tua string de conexão: MONGO_URI=mongodb+srv://<user>:<password>@cluster0...
-touch .env
-
-# Correr o servidor
 node index.js
 ```
-O servidor ficará a escutar na porta `3000`.
 
-### 2. Configurar o Frontend (Angular)
-Abra um **novo terminal** para manter o servidor a correr em simultâneo.
+O servidor fica a escutar na porta `3000`.
+
+**Terminal 2 — Frontend**
 
 ```bash
-# Entrar na pasta do frontend
 cd angular/live-geoboard
-
-# Instalar dependências
 npm install
-
-# Correr a aplicação
 npx ng serve -o
 ```
-A aplicação abrirá automaticamente no navegador em `http://localhost:4200`.
 
-## 📸 Demonstração
+A aplicação abre automaticamente em http://localhost:4200.
 
-![Screenshot do Live GeoBoard](img/demo.png)
+## 🗺️ Roadmap
 
-Um mural interativo onde os utilizadores podem registar pontos de interesse num mapa
-
-
-## 🚀 Próximos Passos (Roadmap) ##
-
-Login com utilizadores, autenticação, agrupamento de marcadores no mapa
-
+- [x] Mapa interativo com Leaflet
+- [x] Sincronização em tempo real com WebSockets
+- [x] Persistência no MongoDB Atlas
+- [x] Dockerização do frontend e do backend
+- [ ] Registo e login de utilizadores
+- [ ] Autenticação nas rotas e nos eventos de socket
+- [ ] Agrupamento de marcadores (*clustering*) no mapa
 
 ## 👨‍💻 Autor
+
+<div align="center">
 
 **Pedro Rosa**
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/pedro-rosa-02208235a/)
 [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/pedrorosa3)
+
+<sub>Desenvolvido em novembro de 2026</sub>
+
+</div>

@@ -1,5 +1,5 @@
 # Usa uma imagem leve do Node.js
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Define a diretoria de trabalho dentro do contentor
 WORKDIR /app
